@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dev自动合并到pre</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 10px 10px 10px 10px;
+        }
+
+        .p-box {
+            display: flex;
+            justify-content: flex-start;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+
+        .label {
+            margin-bottom: 8px;
+        }
+
+        input {
+            width: calc(100% - 20px);
+            height: 30px;
+            margin-bottom: 10px;
+            padding: 5px;
+            outline: none !important;
+            text-decoration: none;
+        }
+
+        .btn {
+            width: 100%;
+            height: 40px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        .btn:hover {
+            background-color: #007bff;
+            opacity: 0.8;
+        }
+
+        #loading {
+            display: none;
+            margin-top: 10px;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 20px;
+            height: 20px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+            margin-left: 10px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 6px;
+            bottom: 7px;
+            border-radius: 20px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+        }
+
+        input:checked+.slider {
+            background-color: #2196F3;
+        }
+
+        input:focus+.slider {
+            box-shadow: 0 0 1px #2196F3;
+        }
+
+        input:checked+.slider:before {
+            -webkit-transform: translateX(26px);
+            -ms-transform: translateX(26px);
+            transform: translateX(26px);
+        }
+    </style>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <h1>dev自动合并到pre</h1>
+        <h2>
+            <label class="label" for="pathA">切换 自己输入路径</label>
+            <label class="switch">
+                <input type="checkbox" v-model="switchInput">
+                <span class="slider"></span>
+            </label>
+        </h2>
+        <div v-if="switchInput">
+            <div class="p-box">
+                <label class="label" for="pathA">项目路径:</label>
+                <input v-model="inputValue" id="projectPath" type="text" placeholder="请输入要自动合并的项目路径">
+            </div>
+            <button class="btn" id="mergeButton" @click="handleStartMerge" ref="mergeBtnRef">开始合并</button>
+            <div id="loading" ref="loadingRef">
+                <div class="loader"></div>
+                <p>正在合并...</p>
+            </div>
+        </div>
+        <div v-else>
+            <div class="p-box" v-for="item in data">
+                <label class="label" for="pathA">{{item.name}}</label>
+                <button :disable="item.isMerge" class="btn" id="mergeButtonAuto" @click="handleBtn(item)">
+                    {{item.isMerge ? loadingText : item.name}}
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+<script>
+    const {
+        createApp,
+        ref,
+        onMounted
+    } = Vue
+    createApp({
+        setup() {
+            const message = ref('Hello vue!')
+            const data = ref([{
+                name: 'fundpro --- 升级预环境',
+                isMerge: false,
+                path: `C:\\Users\\zyyx\\Desktop\\zyyx\\fund-project\\fundpro`
+            }, {
+                name: 'zyfp-fof --- 升级预环境',
+                isMerge: false,
+                path: `C:\\Users\\zyyx\\Desktop\\zyyx\\fund-project\\zyfp-fof-web`
+            }, {
+                name: 'bestfunds --- 升级预环境',
+                isMerge: false,
+                path: `C:\\Users\\zyyx\\Desktop\\zyyx\\fund-project\\bestfunds`
+            }, {
+                name: 'zyfp-amp --- 升级预环境',
+                isMerge: false,
+                path: `C:\\Users\\zyyx\\Desktop\\zyyx\\fund-project\\zyfp-amp-web`
+            }])
+            const switchInput = ref(false)
+            const loadingText = '正在合并...'
+            const inputValue = ref('')
+            const loadingRef = ref(null)
+            const mergeBtnRef = ref()
+            const handleBtn = (item) => {
+                if (item.isMerge) {
+                    return
+                }
+                item.isMerge = true
+                window.electronApi.ipcRenderer.send('start-merge', item.path)
+            }
+            const handleStartMerge = () => {
+                if (!inputValue.value) {
+                    alert('请输入项目路径')
+                    return
+                }
+                mergeBtnRef.value.disabled = t·rue
+                loadingRef.value.style.display = 'block'
+                window.electronApi.ipcRenderer.send('start-merge', inputValue.value)
+            }
+            onMounted(() => {
+                window.electronApi.ipcRenderer.on('merge-result', (event, arg) => {
+                    alert(arg)
+                    data.value.forEach(item => {
+                        item.isMerge = false
+                    })
+                    if (switchInput.value) {
+                        loadingRef.value.style.display = 'none'
+                        mergeBtnRef.value.disabled = false
+                    }
+                })
+            })
+            return {
+                message,
+                data,
+                switchInput,
+                inputValue,
+                loadingRef,
+                loadingText,
+                mergeBtnRef,
+                handleBtn,
+                handleStartMerge,
+            }
+        }
+    }).mount('#app')
+</script>
+
+</html>
